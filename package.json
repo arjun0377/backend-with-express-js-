@@ -8,15 +8,19 @@
   "name": "data-modleign",
   "version": "1.0.0",
   "description": "data modelign",
+  "type": "module",
   "main": "index.js",
-  "devDependencies": {},
   "scripts": {
-    "test": "run"
+    "test": "run",
+    "dev":"nodemon src/index.js"
   },
   "keywords": [
     "javasrcript",
     "backend"
   ],
   "author": "arjun",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
 }
