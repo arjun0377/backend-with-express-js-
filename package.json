@@ -1,0 +1,22 @@
+{
+  "dependencies": {
+    "express": "^5.1.0",
+    "expressjs": "^1.0.1",
+    "mogoose": "^0.0.1-security",
+    "mongoose": "^8.18.1"
+  },
+  "name": "data-modleign",
+  "version": "1.0.0",
+  "description": "data modelign",
+  "main": "index.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "run"
+  },
+  "keywords": [
+    "javasrcript",
+    "backend"
+  ],
+  "author": "arjun",
+  "license": "ISC"
+}
