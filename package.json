@@ -1,8 +1,7 @@
 {
   "dependencies": {
+    "dotenv": "^17.2.2",
     "express": "^5.1.0",
-    "expressjs": "^1.0.1",
-    "mogoose": "^0.0.1-security",
     "mongoose": "^8.18.1"
   },
   "name": "data-modleign",
@@ -12,7 +11,7 @@
   "main": "index.js",
   "scripts": {
     "test": "run",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon -r dotenv/config src/index.js"
   },
   "keywords": [
     "javasrcript",
@@ -24,4 +23,5 @@
     "nodemon": "^3.1.10",
     "prettier": "^3.6.2"
   }
+ 
 }
