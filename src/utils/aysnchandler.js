@@ -4,16 +4,14 @@ import { response } from "express"
 
 // }
 
-const asynhandler = (responsehandler)  => (res , req ,next ) =>{
-      Promise.resolve(responsehandler(req , res , next)).
-      catch(err =>next(err))
-
-      
+const asynchandler = (responsehandler)  => (res , req ,next ) =>{
+        Promise.resolve(responsehandler(req , res , next)).
+      catch(err =>next(err)) 
 }
 
 
 
-export {asynhandler}
+export {asynchandler}
 
 // const asynhandler = (fn) => async  (req, res, next) => {
 //   try {
