@@ -1,6 +1,6 @@
 import mongoose, { Schema, Types } from "mongoose";
 import jwt from "jsonwebtoken";
-import bcrypt from "bcrypt "
+import bcrypt from "bcrypt"
 const userSchema = new Schema({
     username: {
         type: String,
@@ -13,7 +13,7 @@ const userSchema = new Schema({
     },
     email: {
         type: String,
-        required: true,
+        // required: true,
         unique: true,
         lowerCase: true,
         trim: true,
@@ -36,7 +36,7 @@ const userSchema = new Schema({
     },
     mobilenumber: {
         type: Number,
-        required: true,
+        // required: true,
         trim: true,
 
     },
@@ -54,7 +54,7 @@ const userSchema = new Schema({
             ref: "video"
         }
     ],
-    c: {
+    refresToken:{
         Type: String,
 
     }

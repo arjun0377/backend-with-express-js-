@@ -4,9 +4,10 @@ import { response } from "express"
 
 // }
 
-const asynchandler = (responsehandler)  => (res , req ,next ) =>{
-        Promise.resolve(responsehandler(req , res , next)).
-      catch(err =>next(err)) 
+const asynchandler = (responsehandler)  => {
+    return(req , res, next) =>{
+      Promise.resolve(responsehandler(req , res , next)).catch((err) => next(err)) 
+    }
 }
 
 
