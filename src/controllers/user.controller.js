@@ -1,12 +1,41 @@
-// import { json } from "express";
 import { asynchandler } from "../utils/aysnchandler.js";
 import { apierror } from "../utils/errohandler.js"
 import { User } from "../models/user.model.js";
 import { uploadcloudniary } from "../utils/cloudnary.js"
 import { apiresponse } from "../utils/apiresponse.js";
+import jwt from "jsonwebtoken"
+import { response } from "express";
 
-const registerUser = asynchandler(async (req, res , next) => {
-        //    Promise.resolve(fn(req, res, next)).catch(next)
+
+
+// gnerateting access and refreshToken 
+const generateAccessTokenAndgenrateRefrehToken = async (userId) => {
+    try {
+        const user = await User.findById(userId)
+        
+        if (!user) {
+            throw new apierror(404, "user not found while generating tokens");
+        }
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken();
+
+        user.refreshToken = refreshToken;
+        await user.save({ validateBeforeSave: false })
+
+        // user.accessToken = accessToken
+        return { accessToken, refreshToken }
+
+
+
+    } catch (error) {
+        throw new apierror(500, "somthing wnet wrong while gnerating refresh and accesstoken");
+    }
+
+}
+
+// register user 
+const registerUser = asynchandler(async (req, res, next) => {
+    //    Promise.resolve(fn(req, res, next)).catch(next)
     //get the user details from the frontedn 
     // validate the user detail 
     // check if the user si already exxits 
@@ -20,19 +49,18 @@ const registerUser = asynchandler(async (req, res , next) => {
 
     // console.log("HEADERS:", JSON.stringify(req.headers, null, 2));
     // console.log("FILES:", req.files);
-    
-    const { fullname, email, username, passward } = req.body;
+
+    const {fullname, email, username, passward } = req.body;
     // console.log("BODY:", req.body);
 
     if (
-        [fullname, email, username, passward].some((field) => field?.trim() === ""))
-         {
+        [fullname, email, username, passward].some((field) => field?.trim() === "")) {
         throw new apierror(400, "All fields are required");
     }
 
     // Check existing user
     const existeduser = await User.findOne({
-        $or : [{ email }, { username }]
+        $or: [{ email }, { username }]
     });
 
     if (existeduser) {
@@ -40,14 +68,14 @@ const registerUser = asynchandler(async (req, res , next) => {
     }
 
     console.log(req.files);
-    
+
 
     const avatarlocalpath = req.files?.avatar[0]?.path;
     // const coverlocalpath = req.files?.coverimage[0]?.path;
     let coverlocalpath;
 
-    if(req.files && Array.isArray(req.files.coverimage) && req.files.coverimage.length > 0 ){
-        coverlocalpath  = req.files.coverimage[0].path;
+    if (req.files && Array.isArray(req.files.coverimage) && req.files.coverimage.length > 0) {
+        coverlocalpath = req.files.coverimage[0].path;
 
     }
 
@@ -85,16 +113,130 @@ const registerUser = asynchandler(async (req, res , next) => {
 });
 
 
+// user login function 
+const loginuser = asynchandler(async (req, res, next) => {
+    //req.body -> data
+    // find user 
+    // if user not find throw error 
+    // passward check 
+    // accesstoken and refreshtoken 
+    // send cookie
 
- const login = asynchandler(async(req , res , next) =>{
-    //email verification from mongodb
-    //pasward verfication  from mongodb
-    // if both are correct continiue 
-    // if not then shwo error from email error or passward error 
+    const { email, username, passward } = req.body;
+
+    if (!username && !email) {
+        throw new apierror(400, "email and username are required :  ");
+    }
+
+    const finduser = await User.findOne({
+        $or: [{ email }, { username }]
+    })
+
+    if (!finduser) {
+        throw new apierror(404, " user not find please register")
+    }
+
+    const passwardCheck = await finduser.ispasswardCorrect(passward)
+
+    if (!passwardCheck) {
+        throw new apierror(401, "passward inccoret ")
+    }
+
+
+    const { refreshToken, accessToken } = await generateAccessTokenAndgenrateRefrehToken(finduser._id)
+
+
+    const loggeduser = await User.findById(finduser._id).select("-passward -refreshToken")
+
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+
+    return res
+        .status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json(
+            new apiresponse(200,
+                {
+                    user: loggeduser, accessToken, refreshToken,
+                },
+                "user logged in succesully "
+            )
+        );
+
+
+})
+
+const refreshAccessToken = asynchandler (async(req , res , next) =>{
+      const incomingrefreshToken =  req.cookie.refreshToken || req.body.refreshToken
+
+      if(!incomingrefreshToken){
+         throw new apierror(401 , "unauthorize request ");
+      }
+
+  
+    try {
+        const decodedToken =   jwt.verify(
+            incomingrefreshToken ,
+            process.env.REFRESH_TOKEN_SECRET
+        )
     
- })
+         const user =  await  User.findById(decodedToken?._id )
+    
+           if(!user){
+             throw new apierror(401 , " User not found in db due to invalid regresh token  ");
+          }
+    
+        if(incomingrefreshToken  !== user.refreshToken){
+              throw new apierror(401 , "refresh token is expire  or used ");
+        }
+    
+        const options = {
+            httpOnly : true ,
+            secure : true
+        }
+        
+       const  {accessToken , newrefreshToken }=   await generateAccessTokenAndgenrateRefrehToken(user._id)
+          
+        return res
+        .status(200)
+        .cookie("Access" , accessToken , options )
+        .cookie("refreshTOken" , newrefreshToken , options)
+        .json(
+            new apiresponse(200 , accessToken , newrefreshToken , "acces token refreshed successfully ")
+        )
+    } catch (error) {
+        throw new apierror(401 , error?.message ||  "inavlid refreshtoken ")
+    }
+})
 
-export { registerUser }
+// logout user function 
+const logoutuser = asynchandler(async (req, res, next) => {
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            refreshToken: undefined
+        },
+        {
+            new: true
+        }
+    )
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+
+    return res 
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(new apiresponse(200 , {} , "user logout successfully "))
+
+})
+
+export { registerUser, loginuser, logoutuser , refreshAccessToken }
 // const registerUser = (req, res) => {
 //     res.json({
 //         headers: req.headers,

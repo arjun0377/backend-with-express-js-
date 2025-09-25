@@ -10,8 +10,6 @@ const asynchandler = (responsehandler)  => {
     }
 }
 
-
-
 export {asynchandler}
 
 // const asynhandler = (fn) => async  (req, res, next) => {
