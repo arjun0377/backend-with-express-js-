@@ -12,7 +12,7 @@ import { response } from "express";
 const generateAccessTokenAndgenrateRefrehToken = async (userId) => {
     try {
         const user = await User.findById(userId)
-        
+
         if (!user) {
             throw new apierror(404, "user not found while generating tokens");
         }
@@ -50,7 +50,7 @@ const registerUser = asynchandler(async (req, res, next) => {
     // console.log("HEADERS:", JSON.stringify(req.headers, null, 2));
     // console.log("FILES:", req.files);
 
-    const {fullname, email, username, passward } = req.body;
+    const { fullname, email, username, passward } = req.body;
     // console.log("BODY:", req.body);
 
     if (
@@ -169,46 +169,46 @@ const loginuser = asynchandler(async (req, res, next) => {
 
 })
 
-const refreshAccessToken = asynchandler (async(req , res , next) =>{
-      const incomingrefreshToken =  req.cookie.refreshToken || req.body.refreshToken
+const refreshAccessToken = asynchandler(async (req, res, next) => {
+    const incomingrefreshToken = req.cookie.refreshToken || req.body.refreshToken
 
-      if(!incomingrefreshToken){
-         throw new apierror(401 , "unauthorize request ");
-      }
+    if (!incomingrefreshToken) {
+        throw new apierror(401, "unauthorize request ");
+    }
 
-  
+
     try {
-        const decodedToken =   jwt.verify(
-            incomingrefreshToken ,
+        const decodedToken = jwt.verify(
+            incomingrefreshToken,
             process.env.REFRESH_TOKEN_SECRET
         )
-    
-         const user =  await  User.findById(decodedToken?._id )
-    
-           if(!user){
-             throw new apierror(401 , " User not found in db due to invalid regresh token  ");
-          }
-    
-        if(incomingrefreshToken  !== user.refreshToken){
-              throw new apierror(401 , "refresh token is expire  or used ");
+
+        const user = await User.findById(decodedToken?._id)
+
+        if (!user) {
+            throw new apierror(401, " User not found in db due to invalid regresh token  ");
         }
-    
+
+        if (incomingrefreshToken !== user.refreshToken) {
+            throw new apierror(401, "refresh token is expire  or used ");
+        }
+
         const options = {
-            httpOnly : true ,
-            secure : true
+            httpOnly: true,
+            secure: true
         }
-        
-       const  {accessToken , newrefreshToken }=   await generateAccessTokenAndgenrateRefrehToken(user._id)
-          
+
+        const { accessToken, newrefreshToken } = await generateAccessTokenAndgenrateRefrehToken(user._id)
+
         return res
-        .status(200)
-        .cookie("Access" , accessToken , options )
-        .cookie("refreshTOken" , newrefreshToken , options)
-        .json(
-            new apiresponse(200 , accessToken , newrefreshToken , "acces token refreshed successfully ")
-        )
+            .status(200)
+            .cookie("Access", accessToken, options)
+            .cookie("refreshTOken", newrefreshToken, options)
+            .json(
+                new apiresponse(200, accessToken, newrefreshToken, "acces token refreshed successfully ")
+            )
     } catch (error) {
-        throw new apierror(401 , error?.message ||  "inavlid refreshtoken ")
+        throw new apierror(401, error?.message || "inavlid refreshtoken ")
     }
 })
 
@@ -228,15 +228,149 @@ const logoutuser = asynchandler(async (req, res, next) => {
         secure: true
     }
 
-    return res 
-    .status(200)
-    .clearCookie("accessToken", options)
-    .clearCookie("refreshToken", options)
-    .json(new apiresponse(200 , {} , "user logout successfully "))
+    return res
+        .status(200)
+        .clearCookie("accessToken", options)
+        .clearCookie("refreshToken", options)
+        .json(new apiresponse(200, {}, "user logout successfully "))
 
 })
 
-export { registerUser, loginuser, logoutuser , refreshAccessToken }
+const changeCurrentPassword = asynchandler(async (req, res) => {
+
+    const { oldpassword, newpassward, confpassword } = req.body;
+
+    if (!(newpassward === confpassword)) {
+        throw new apierror(400, " passwrod is not matched ")
+    }
+
+
+    const user = await User.findById(req.user?._id)
+
+    const passwardiscorrect = await user.passwardiscorrect(oldpassword);
+
+
+    if (!passwardiscorrect) {
+        throw new apierror(400, " old passward is incorrect ")
+    }
+
+    user.passward = newpassward;
+    user.save({ validateBeforeSave: false })
+
+    return res
+        .status(200)
+        .json(new apiresponse(200, {}, "passward is cahnge succesfully "))
+
+
+
+
+
+})
+
+
+const getcurrentuser = asynchandler(async (req, res) => {
+    return res
+        .status(200)
+        .json(200, req.user, "cuurretuser fatched succesfully")
+})
+
+const updateAccountDetails = asynchandler(async (req, res) => {
+    const { fullname, email, mobilenumber } = req.body;
+
+    if (!fullname || !email || !mobilenumber) {
+        throw new apierror(400, "all feilds are required : ")
+    }
+
+    const user = await User.findByIdAndUpdate(req.user?._id, {
+
+
+        $set: {
+            fullname,
+            email: email,
+            mobilenumber: mobilenumber
+        }
+    }
+        , { new: true }
+
+    ).select("-passward")
+
+    return res
+        .status(200)
+        .json(new apiresponse(200, user, "Account details updated successfully "))
+
+})
+
+
+const updateUserAvatar = asynchandler(async (req, res) => {
+    const avatarlocalpath = req.file?.path
+
+    if (!avatarlocalpath) {
+        throw new apierror(400, "the  avatar file is not found  ")
+    }
+
+    const avatar = await uploadcloudniary(avatarlocalpath)
+
+    if (!avatar.url) {
+        throw new apierror(400, "error while uplodign on coloudinary ")
+    }
+
+     const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                avatar: avatar.url
+            }
+        },
+        { new: true }
+    ).select("-passward")
+
+    return res
+        .status(200)
+        .json(new apierror(200, user, "the avatr  is updated succesfully "))
+})
+
+const updateUserCoverimage = asynchandler(async (req, res) => {
+    const coverlocalpath = req.file?.path
+
+    if (!coverlocalpath) {
+        throw new apierror(400, "the cover image is not found ")
+    }
+
+    const coverimage = await uploadcloudniary(coverlocalpath)
+
+
+    if (!coverimage.url) {
+        throw new apierror(400, "error while uploading cover image on the cloudinary ")
+    }
+
+    const user =  await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                coverimage: coverimage.url
+            }
+        },
+        { new: true }
+    ).select("-passward")
+
+    return res
+        .status(200)
+        .json(new apiresponse(200, user, "the cover image is updated succesfully "))
+
+
+
+})
+
+
+export { registerUser,
+     loginuser,
+     logoutuser,
+     refreshAccessToken,
+     changeCurrentPassword, 
+     getcurrentuser,
+     updateAccountDetails,
+     updateUserAvatar, 
+     updateUserCoverimage }
 // const registerUser = (req, res) => {
 //     res.json({
 //         headers: req.headers,
