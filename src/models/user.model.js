@@ -48,7 +48,7 @@ const userSchema = new Schema({
         type: String,//cloudanry url
         required: true,
     },
-    watchhistory: [
+    watchHistory: [
         {
             type: Schema.Types.ObjectId,
             ref: "video"
